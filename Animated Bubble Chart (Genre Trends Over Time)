@@ -1,0 +1,32 @@
+import pandas as pd
+import plotly.express as px
+
+# Load dataset
+df = pd.read_csv("/mnt/data/Netflix Dataset.csv")
+
+# Extract year
+df['year'] = df['Release_Date'].astype(str).str.extract(r'(\d{4})').astype(float)
+
+# Genres
+df['genre'] = df['Type'].dropna().astype(str).str.split(',')
+df_exploded = df.explode('genre')
+df_exploded['genre'] = df_exploded['genre'].str.strip()
+
+# Movies vs TV Shows category
+df_exploded['category'] = df['Category']
+
+# Group for bubble chart
+genre_year = df_exploded.groupby(['year','genre','category']).size().reset_index(name='count')
+
+# Animated bubble chart
+fig = px.scatter(
+    genre_year,
+    x="genre", y="count",
+    size="count", color="category",
+    animation_frame="year",
+    animation_group="genre",
+    size_max=80,
+    title="🎬 Netflix Genre Evolution (2008–2021)",
+    labels={"genre":"Genre", "count":"Number of Titles"}
+)
+fig.show()
