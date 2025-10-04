@@ -1,0 +1,94 @@
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import FancyArrowPatch
+
+# Load your Netflix dataset
+df = pd.read_csv("Netflix Dataset.csv")
+
+# Fill missing values
+df['Type'] = df['Type'].fillna('')
+df['Country'] = df['Country'].fillna('')
+
+# Split and explode genres and countries
+df = df.assign(genre=df['Type'].str.split(',')).explode('genre')
+df['genre'] = df['genre'].str.strip()
+df = df.assign(country=df['Country'].str.split(',')).explode('country')
+df['country'] = df['country'].str.strip()
+
+# Remove empty entries
+df = df[(df['country'] != '') & (df['genre'] != '')]
+
+# Select top countries and genres
+top_countries = df['country'].value_counts().head(8).index.tolist()
+top_genres = df['genre'].value_counts().head(12).index.tolist()
+
+# Filter relevant records
+df_sub = df[df['country'].isin(top_countries) & df['genre'].isin(top_genres)].copy()
+
+# Build connection weights (country x genre)
+weights = df_sub.groupby(['country','genre']).size().unstack(fill_value=0).loc[top_countries, top_genres]
+
+# Assign circular positions for countries and genres
+num_countries = len(top_countries)
+num_genres = len(top_genres)
+total_nodes = num_countries + num_genres
+
+angles = np.linspace(0, 2*np.pi, total_nodes, endpoint=False)
+country_angles = angles[:num_countries]
+genre_angles = angles[num_countries:total_nodes]
+
+radius = 10
+node_positions = {}
+for i, c in enumerate(top_countries):
+    theta = country_angles[i]
+    node_positions[c] = (radius * np.cos(theta), radius * np.sin(theta))
+for j, g in enumerate(top_genres):
+    theta = genre_angles[j]
+    node_positions[g] = (radius * np.cos(theta), radius * np.sin(theta))
+
+# Begin plotting
+plt.figure(figsize=(14,14), facecolor='black')
+ax = plt.gca()
+ax.set_facecolor('black')
+
+# --- Draw nodes and labels ---
+# Countries (Orange)
+for i, c in enumerate(top_countries):
+    x,y = node_positions[c]
+    size = 700 + 80 * (df_sub['country'].value_counts().get(c,0) / df_sub.shape[0])
+    plt.scatter(x, y, s=size, c='orange', edgecolors='white', zorder=4)
+    plt.text(x*1.18, y*1.18, c, fontsize=10, color='white', ha='center', va='center')
+
+# Genres (Cyan)
+for j, g in enumerate(top_genres):
+    x,y = node_positions[g]
+    size = 300 + 80 * (df_sub['genre'].value_counts().get(g,0) / df_sub.shape[0])
+    plt.scatter(x, y, s=size, c='cyan', edgecolors='white', zorder=4)
+    plt.text(x*1.18, y*1.18, g, fontsize=9, color='white', ha='center', va='center')
+
+# --- Draw curved connections ---
+max_w = weights.values.max() if weights.values.size > 0 else 1
+
+for i, c in enumerate(top_countries):
+    for j, g in enumerate(top_genres):
+        w = weights.at[c, g] if (c in weights.index and g in weights.columns) else 0
+        if w <= 0:
+            continue
+        start = node_positions[c]
+        end = node_positions[g]
+        rad = 0.4 * ((i + j) % 6) / 6.0  # slight curvature variation
+        linewidth = 0.8 + 6.0 * (w / max_w)
+        patch = FancyArrowPatch(start, end, connectionstyle=f"arc3,rad={rad}", 
+                                linewidth=linewidth, alpha=0.65, color='magenta', zorder=2)
+        ax.add_patch(patch)
+
+# --- Center and title ---
+plt.scatter(0,0, s=600, c='red', alpha=0.9, zorder=5)
+plt.text(0,0, "Netflix\nContent Galaxy", fontsize=14, color='white', ha='center', va='center')
+
+plt.axis('off')
+plt.title("🌌 Netflix Content Galaxy — Genre ↔ Country Connections", color='white', fontsize=16)
+plt.tight_layout()
+plt.show()
