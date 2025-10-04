@@ -1,0 +1,26 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud, STOPWORDS
+
+# Load dataset
+df = pd.read_csv("/mnt/data/Netflix Dataset.csv")
+
+# Combine all descriptions
+text = " ".join(df['Description'].dropna().astype(str))
+
+# Word cloud
+stopwords = set(STOPWORDS)
+wordcloud = WordCloud(
+    stopwords=stopwords,
+    background_color="black",
+    colormap="Reds",
+    contour_color="red",
+    contour_width=2,
+    width=1200, height=700
+).generate(text)
+
+plt.figure(figsize=(14,8))
+plt.imshow(wordcloud, interpolation="bilinear")
+plt.axis("off")
+plt.title("☁️ Netflix Word Cloud from Descriptions", fontsize=18, color="red")
+plt.show()
