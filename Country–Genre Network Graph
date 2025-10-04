@@ -1,0 +1,29 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import networkx as nx
+
+# Load dataset
+df = pd.read_csv("/mnt/data/Netflix Dataset.csv")
+
+# Explode countries
+df['country'] = df['Country'].dropna().astype(str).str.split(',')
+df_country = df.explode('country')
+df_country['country'] = df_country['country'].str.strip()
+
+# Explode genres
+df_country['genre'] = df_country['Type'].dropna().astype(str).str.split(',')
+df_country = df_country.explode('genre')
+df_country['genre'] = df_country['genre'].str.strip()
+
+# Build graph
+edges = df_country[['country','genre']].dropna()
+G = nx.from_pandas_edgelist(edges, source="country", target="genre")
+
+plt.figure(figsize=(16,14))
+pos = nx.spring_layout(G, k=0.25)
+nx.draw_networkx_nodes(G, pos, node_size=60, node_color="crimson")
+nx.draw_networkx_edges(G, pos, alpha=0.2, edge_color="gray")
+nx.draw_networkx_labels(G, pos, font_size=6, font_color="white")
+plt.title("🌌 Netflix Country–Genre Universe", fontsize=18, color="red")
+plt.axis("off")
+plt.show()
